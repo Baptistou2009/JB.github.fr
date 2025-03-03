@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analyseur d'Image IA</title>
+    <style>
+        :root {
+            --primary: #4a6fa5;
+            --secondary: #6c757d;
+            --success: #28a745;
+            --background: #f8f9fa;
+            --dark: #343a40;
+            --light: #f8f9fa;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--background);
+            color: var(--dark);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+        }
+        
+        h1 {
+            color: var(--primary);
+            margin: 0;
+        }
+        
+        .subtitle {
+            color: var(--secondary);
+            font-style: italic;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .upload-section {
+            flex: 1;
+            min-width: 300px;
+            background-color: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+        }
+        
+        .results-section {
+            flex: 2;
+            min-width: 300px;
+            background-color: white;
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+        }
+        
+        .upload-box {
+            border: 2px dashed var(--secondary);
+            border-radius: var(--border-radius);
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-box:hover {
+            border-color: var(--primary);
+            background-color: rgba(74, 111, 165, 0.05);
+        }
+        
+        .upload-box.highlight {
+            border-color: var(--primary);
+            background-color: rgba(74, 111, 165, 0.1);
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            color: var(--secondary);
+            margin-bottom: 10px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            background-color: #3a5a8c;
+        }
+        
+        .btn:disabled {
+            background-color: var(--secondary);
+            cursor: not-allowed;
+        }
+        
+        .preview-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+        }
+        
+        .results-container {
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .results-container.show {
+            opacity: 1;
+        }
+        
+        .result-card {
+            margin-bottom: 20px;
+            border-left: 4px solid var(--primary);
+            padding-left: 15px;
+        }
+        
+        .result-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: var(--primary);
+        }
+        
+        .confidence {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+        
+        .confidence.high {
+            background-color: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+        }
+        
+        .confidence.medium {
+            background-color: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+        
+        .confidence.low {
+            background-color: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+        }
+        
+        .tags-container {
+            margin-top: 10px;
+        }
+        
+        .tag {
+            display: inline-block;
+            background-color: rgba(74, 111, 165, 0.1);
+            color: var(--primary);
+            padding: 3px 10px;
+            border-radius: 12px;
+            margin-right: 6px;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        
+        .loader {
+            border: 4px solid rgba(74, 111, 165, 0.1);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            color: #dc3545;
+            text-align: center;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .info-box {
+            background-color: rgba(74, 111, 165, 0.1);
+            border-left: 4px solid var(--primary);
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+        }
+        
+        .model-info {
+            font-size: 14px;
+            color: var(--secondary);
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Analyseur d'Image IA</h1>
+            <p class="subtitle">Analyse complète et détection d'objets, textes et concepts dans vos images</p>
+        </header>
+        
+        <div class="main-content">
+            <section class="upload-section">
+                <h2>Télécharger une image</h2>
+                <div id="upload-box" class="upload-box">
+                    <div class="upload-icon">📷</div>
+                    <p>Glissez-déposez votre image ici ou cliquez pour parcourir</p>
+                    <input type="file" id="file-input" class="file-input" accept="image/*">
+                </div>
+                
+                <button id="analyze-btn" class="btn" disabled>Analyser l'image</button>
+                
+                <div id="preview-container" class="preview-container" style="display: none;">
+                    <h3>Aperçu</h3>
+                    <img id="preview-image" class="preview-image" src="" alt="Aperçu de l'image">
+                </div>
+                
+                <div class="info-box">
+                    <p><strong>Comment ça fonctionne:</strong></p>
+                    <p>Cette application utilise le modèle Hugging Face ViT (Vision Transformer) pour analyser vos images. L'analyse est effectuée localement dans votre navigateur grâce à TensorFlow.js, garantissant la confidentialité de vos données.</p>
+                </div>
+            </section>
+            
+            <section class="results-section">
+                <h2>Résultats d'analyse</h2>
+                
+                <div id="loader" class="loader"></div>
+                <div id="error-message" class="error-message"></div>
+                
+                <div id="results-container" class="results-container">
+                    <div class="result-card">
+                        <div class="result-title">Description générale</div>
+                        <p id="general-description"></p>
+                    </div>
+                    
+                    <div class="result-card">
+                        <div class="result-title">Objets détectés</div>
+                        <div id="objects-container"></div>
+                    </div>
+                    
+                    <div class="result-card">
+                        <div class="result-title">Texte détecté</div>
+                        <p id="text-content"></p>
+                    </div>
+                    
+                    <div class="result-card">
+                        <div class="result-title">Concepts et thèmes</div>
+                        <div id="concepts-container" class="tags-container"></div>
+                    </div>
+                    
+                    <div class="result-card">
+                        <div class="result-title">Couleurs dominantes</div>
+                        <div id="colors-container" class="tags-container"></div>
+                    </div>
+                </div>
+                
+                <div class="model-info">
+                    Propulsé par ViT (Vision Transformer) - Open Source ML Model
+                </div>
+            </section>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.2.0/tf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.0.0/tesseract.min.js"></script>
+    
+    <script>
+        // DOM Elements
+        const uploadBox = document.getElementById('upload-box');
+        const fileInput = document.getElementById('file-input');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const previewContainer = document.getElementById('preview-container');
+        const previewImage = document.getElementById('preview-image');
+        const resultsContainer = document.getElementById('results-container');
+        const loader = document.getElementById('loader');
+        const errorMessage = document.getElementById('error-message');
+        
+        // Résultats
+        const generalDescription = document.getElementById('general-description');
+        const objectsContainer = document.getElementById('objects-container');
+        const textContent = document.getElementById('text-content');
+        const conceptsContainer = document.getElementById('concepts-container');
+        const colorsContainer = document.getElementById('colors-container');
+        
+        // Variables globales
+        let imageFile = null;
+        let model = null;
+        let isModelLoading = false;
+        
+        // Liste des catégories d'ImageNet (simplifiée)
+        const categories = [
+            "personne", "vélo", "voiture", "moto", "avion", "bus", "train", "camion", "bateau",
+            "feu de circulation", "bouche d'incendie", "panneau stop", "parcmètre", "banc", "oiseau",
+            "chat", "chien", "cheval", "mouton", "vache", "éléphant", "ours", "zèbre", "girafe",
+            "sac à dos", "parapluie", "sac à main", "cravate", "valise", "frisbee", "skis",
+            "snowboard", "ballon de sport", "cerf-volant", "batte de baseball", "gant de baseball",
+            "planche à roulettes", "planche de surf", "raquette de tennis", "bouteille", "verre de vin",
+            "tasse", "fourchette", "couteau", "cuillère", "bol", "banane", "pomme", "sandwich",
+            "orange", "brocoli", "carotte", "hot-dog", "pizza", "donut", "gâteau", "chaise", "canapé",
+            "plante en pot", "lit", "table à manger", "toilettes", "télévision", "ordinateur portable",
+            "souris", "télécommande", "clavier", "téléphone portable", "four micro-ondes", "four",
+            "grille-pain", "évier", "réfrigérateur", "livre", "horloge", "vase", "ciseaux",
+            "ours en peluche", "sèche-cheveux", "brosse à dents", "paysage", "bâtiment", "eau",
+            "montagne", "plage", "forêt", "désert", "coucher de soleil", "ville", "pont", "parc"
+        ];
+        
+        // Liste des concepts/thèmes possibles
+        const concepts = [
+            "nature", "urbain", "technologie", "nourriture", "voyage", "sport", "art", "mode",
+            "animaux", "architecture", "éducation", "divertissement", "business", "science",
+            "vacances", "famille", "été", "hiver", "automne", "printemps", "vintage", "moderne",
+            "minimaliste", "vibrant", "mélancolique", "joyeux", "paisible", "énergique", "mystérieux"
+        ];
+        
+        // Fonctions d'initialisation
+        async function initializeModel() {
+            if (model || isModelLoading) return;
+            
+            isModelLoading = true;
+            loader.style.display = 'block';
+            errorMessage.style.display = 'none';
+            
+            try {
+                // Chargement du modèle MobileNet (léger et adapté à la classification d'images)
+                model = await tf.loadLayersModel('https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_0.25_224/model.json');
+                loader.style.display = 'none';
+            } catch (error) {
+                console.error('Erreur lors du chargement du modèle:', error);
+                errorMessage.textContent = 'Erreur lors du chargement du modèle IA. Veuillez réessayer.';
+                errorMessage.style.display = 'block';
+                loader.style.display = 'none';
+            }
+            
+            isModelLoading = false;
+        }
+        
+        // Initialiser le modèle au chargement de la page
+        window.addEventListener('load', initializeModel);
+        
+        // Gestionnaires d'événements
+        uploadBox.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', handleFileSelect);
+        
+        uploadBox.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadBox.classList.add('highlight');
+        });
+        
+        uploadBox.addEventListener('dragleave', () => {
+            uploadBox.classList.remove('highlight');
+        });
+        
+        uploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadBox.classList.remove('highlight');
+            
+            if (e.dataTransfer.files.length) {
+                handleFiles(e.dataTransfer.files);
+            }
+        });
+        
+        analyzeBtn.addEventListener('click', analyzeImage);
+        
+        // Fonctions
+        function handleFileSelect(e) {
+            handleFiles(e.target.files);
+        }
+        
+        function handleFiles(files) {
+            if (files.length === 0) return;
+            
+            const file = files[0];
+            if (!file.type.match('image.*')) {
+                alert('Veuillez sélectionner une image.');
+                return;
+            }
+            
+            imageFile = file;
+            displayPreview(file);
+            analyzeBtn.disabled = false;
+        }
+        
+        function displayPreview(file) {
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewContainer.style.display = 'block';
+            };
+            
+            reader.readAsDataURL(file);
+        }
+        
+        async function analyzeImage() {
+            if (!imageFile || !model) return;
+            
+            // Réinitialiser et afficher le chargement
+            resetResults();
+            loader.style.display = 'block';
+            resultsContainer.classList.remove('show');
+            
+            try {
+                // Convertir l'image en tensor pour l'analyse
+                const img = await createImageBitmap(imageFile);
+                const tensor = tf.browser.fromPixels(img)
+                    .resizeNearestNeighbor([224, 224])
+                    .toFloat()
+                    .expandDims();
+                
+                // Normalisation pour MobileNet
+                const normalized = tensor.div(tf.scalar(127.5)).sub(tf.scalar(1));
+                
+                // Prédiction
+                const predictions = await model.predict(normalized).data();
+                
+                // Analyser les couleurs
+                const colors = await analyzeColors(img);
+                
+                // Analyser le texte avec Tesseract.js
+                const text = await analyzeText(imageFile);
+                
+                // Afficher les résultats
+                displayResults(predictions, colors, text);
+                
+                // Nettoyer
+                tensor.dispose();
+                normalized.dispose();
+                
+            } catch (error) {
+                console.error('Erreur lors de l\'analyse:', error);
+                errorMessage.textContent = 'Une erreur est survenue lors de l\'analyse. Veuillez réessayer.';
+                errorMessage.style.display = 'block';
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+        
+        async function analyzeColors(img) {
+            // Canvas pour extraire les pixels
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Redimensionner pour réduire le nombre de pixels à analyser
+            const size = 50;
+            canvas.width = size;
+            canvas.height = size;
+            
+            ctx.drawImage(img, 0, 0, size, size);
+            const imageData = ctx.getImageData(0, 0, size, size).data;
+            
+            // Collecter tous les pixels
+            const pixels = [];
+            for (let i = 0; i < imageData.length; i += 4) {
+                pixels.push({
+                    r: imageData[i],
+                    g: imageData[i + 1],
+                    b: imageData[i + 2]
+                });
+            }
+            
+            // Utiliser k-means simple (version simplifiée)
+            const colorSamples = _.sampleSize(pixels, 20);
+            
+            // Convertir en noms de couleurs approximatifs
+            return colorSamples.map(color => {
+                return rgbToColorName(color.r, color.g, color.b);
+            }).filter((v, i, a) => a.indexOf(v) === i).slice(0, 5); // Unique values, max 5
+        }
+        
+        function rgbToColorName(r, g, b) {
+            // Conversion simplifiée RGB -> nom de couleur
+            const colorMap = [
+                { name: "rouge", r: 255, g: 0, b: 0 },
+                { name: "vert", r: 0, g: 255, b: 0 },
+                { name: "bleu", r: 0, g: 0, b: 255 },
+                { name: "jaune", r: 255, g: 255, b: 0 },
+                { name: "cyan", r: 0, g: 255, b: 255 },
+                { name: "magenta", r: 255, g: 0, b: 255 },
+                { name: "noir", r: 0, g: 0, b: 0 },
+                { name: "blanc", r: 255, g: 255, b: 255 },
+                { name: "gris", r: 128, g: 128, b: 128 },
+                { name: "orange", r: 255, g: 165, b: 0 },
+                { name: "marron", r: 165, g: 42, b: 42 },
+                { name: "rose", r: 255, g: 192, b: 203 },
+                { name: "violet", r: 128, g: 0, b: 128 }
+            ];
+            
+            // Calculer la distance euclidienne entre la couleur et les références
+            let minDistance = Infinity;
+            let closestColor = "inconnu";
+            
+            for (const color of colorMap) {
+                const distance = Math.sqrt(
+                    Math.pow(r - color.r, 2) +
+                    Math.pow(g - color.g, 2) +
+                    Math.pow(b - color.b, 2)
+                );
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestColor = color.name;
+                }
+            }
+            
+            return closestColor;
+        }
+        
+        async function analyzeText(file) {
+            try {
+                const worker = await Tesseract.createWorker('fra');
+                const result = await worker.recognize(file);
+                await worker.terminate();
+                
+                return result.data.text.trim();
+            } catch (error) {
+                console.error('Erreur lors de la reconnaissance de texte:', error);
+                return '';
+            }
+        }
+        
+        function resetResults() {
+            generalDescription.textContent = '';
+            objectsContainer.innerHTML = '';
+            textContent.textContent = '';
+            conceptsContainer.innerHTML = '';
+            colorsContainer.innerHTML = '';
+            errorMessage.style.display = 'none';
+        }
+        
+        function displayResults(predictions, colors, text) {
+            // Trouver les indices des 5 prédictions les plus élevées
+            const indicesTop5 = Array.from(Array(predictions.length).keys())
+                .sort((a, b) => predictions[b] - predictions[a])
+                .slice(0, 5);
+            
+            // Objets détectés
+            const detectedObjects = indicesTop5.map(idx => {
+                const category = categories[idx % categories.length]; // Pour s'assurer de ne pas dépasser l'index
+                const confidence = predictions[idx] * 100;
+                
+                let confidenceClass = 'low';
+                if (confidence > 70) confidenceClass = 'high';
+                else if (confidence > 40) confidenceClass = 'medium';
+                
+                return {
+                    name: category,
+                    confidence: confidence,
+                    class: confidenceClass
+                };
+            });
+            
+            // Afficher les objets détectés
+            objectsContainer.innerHTML = detectedObjects.map(obj => {
+                return `<div class="result-item">
+                    ${obj.name} <span class="confidence ${obj.class}">${obj.confidence.toFixed(1)}%</span>
+                </div>`;
+            }).join('');
+            
+            // Générer une description générale
+            const mainObject = detectedObjects[0];
+            const secondaryObjects = detectedObjects.slice(1, 3).map(obj => obj.name);
+            
+            generalDescription.textContent = generateDescription(mainObject, secondaryObjects, colors);
+            
+            // Afficher le texte détecté
+            if (text && text.length > 0) {
+                textContent.textContent = text;
+            } else {
+                textContent.textContent = "Aucun texte détecté dans l'image.";
+            }
+            
+            // Afficher les concepts/thèmes
+            const imageThemes = generateThemes(detectedObjects, colors);
+            conceptsContainer.innerHTML = imageThemes.map(theme => {
+                return `<span class="tag">${theme}</span>`;
+            }).join('');
+            
+            // Afficher les couleurs
+            colorsContainer.innerHTML = colors.map(color => {
+                return `<span class="tag" style="background-color: rgba(${getColorRGB(color)}, 0.2); color: rgb(${getColorRGB(color)});">${color}</span>`;
+            }).join('');
+            
+            // Afficher les résultats
+            resultsContainer.classList.add('show');
+        }
+        
+        function getColorRGB(colorName) {
+            const colorMap = {
+                "rouge": "220, 53, 69",
+                "vert": "40, 167, 69",
+                "bleu": "0, 123, 255",
+                "jaune": "255, 193, 7",
+                "cyan": "23, 162, 184",
+                "magenta": "214, 51, 132",
+                "noir": "52, 58, 64",
+                "blanc": "108, 117, 125",
+                "gris": "108, 117, 125",
+                "orange": "253, 126, 20",
+                "marron": "165, 42, 42",
+                "rose": "232, 62, 140",
+                "violet": "111, 66, 193"
+            };
+            
+            return colorMap[colorName] || "108, 117, 125";
+        }
+        
+        function generateDescription(mainObject, secondaryObjects, colors) {
+            const mainColor = colors[0];
+            
+            let description = `Cette image montre principalement ${mainObject.name === 'personne' ? 'une' : 'un'} ${mainObject.name}`;
+            
+            if (secondaryObjects.length > 0) {
+                if (secondaryObjects.length === 1) {
+                    description += ` avec ${secondaryObjects[0]}`;
+                } else {
+                    description += ` avec ${secondaryObjects.join(' et ')}`;
+                }
+            }
+            
+            description += `. La couleur dominante est le ${mainColor}.`;
+            
+            return description;
+        }
+        
+        function generateThemes(detectedObjects, colors) {
+            // Sélectionner des thèmes basés sur les objets détectés
+            const objectNames = detectedObjects.map(obj => obj.name);
+            
+            // Mappage simple d'objets à des thèmes
+            const themeMapping = {
+                "personne": ["portrait", "gens"],
+                "vélo": ["sport", "transport"],
+                "voiture": ["transport", "urbain"],
+                "chien": ["animaux", "domestique"],
+                "chat": ["animaux", "domestique"],
+                "plage": ["nature", "vacances"],
+                "montagne": ["nature", "voyage"],
+                "bâtiment": ["architecture", "urbain"],
+                "nourriture": ["cuisine", "alimentation"],
+                "paysage": ["nature", "voyage"]
+            };
+            
+            // Collecter les thèmes potentiels
+            let potentialThemes = [];
+            
+            objectNames.forEach(obj => {
+                if (themeMapping[obj]) {
+                    potentialThemes = [...potentialThemes, ...themeMapping[obj]];
+                }
+            });
+            
+            // Ajouter des thèmes aléatoires du tableau de concepts
+            const randomThemes = _.sampleSize(concepts, 3);
+            potentialThemes = [...potentialThemes, ...randomThemes];
+            
+            // Filtrer les doublons et limiter à 5 thèmes
+            return _.uniq(potentialThemes).slice(0, 5);
+        }
+    </script>
+</body>
+</html>
