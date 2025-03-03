@@ -691,7 +691,10 @@
                     </div>
                     <div class="component-item" draggable="true">
                         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                            <path fill="currentColor" d="M8.5,13.5L11,16.5L14.5,12L19,18H5M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0
+                            <path fill="currentColor" d="M8.5,13.5L11,16.5L14.5,12L19,18H5M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19Z"/>
+                        </svg>
+                        <div>Image</div> <!-- Make sure to close this div properly -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -1160,13 +1163,12 @@ function setDevice(device) {
 /**
  * Rafraîchir l'aperçu avec le code actuel
  */
-function refreshPreview() {
-    const htmlContent = document.getElementById('html-code').textContent;
-    const cssContent = document.getElementById('css-code').textContent;
-    const jsContent = document.getElementById('js-code').textContent;
+ function refreshPreview() {
+    const htmlContent = document.getElementById('html-code').innerText;
+    const cssContent = document.getElementById('css-code').innerText;
+    const jsContent = document.getElementById('js-code').innerText;
     const previewFrame = document.getElementById('preview-frame');
     const previewDocument = previewFrame.contentDocument || previewFrame.contentWindow.document;
-    
     previewDocument.open();
     previewDocument.write(`
         <!DOCTYPE html>
@@ -1183,11 +1185,16 @@ function refreshPreview() {
         </html>
     `);
     previewDocument.close();
+}
 
-    // Ajouter des écouteurs d'événements pour la sélection des éléments
-    setupPreviewSelectors(previewDocument);
 
-    updateStatusBar('Aperçu mis à jour');
+function saveProject() {
+    alert('Enregistrement du projet (fonctionnalité non implémentée)');
+}
+
+function previewProject() {
+    refreshPreview();
+    alert('Aperçu du projet (fonctionnalité non implémentée)');
 }
 
 /**
