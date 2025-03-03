@@ -810,69 +810,896 @@
     </div>
 
     <script>
-        let currentTab = 'html';
+        /**
+ * WebStudio Pro - Éditeur HTML Professionnel
+ * Script JavaScript principal
+ */
 
-        function switchTab(tab) {
-            document.querySelectorAll('.editor-tab').forEach(tabElement => {
-                tabElement.classList.remove('active');
-            });
-            document.querySelectorAll('.code-content').forEach(contentElement => {
-                contentElement.classList.add('hidden');
-            });
-            document.getElementById(`${tab}-code`).classList.remove('hidden');
-            document.querySelector(`.editor-tab[onclick="switchTab('${tab}')"]`).classList.add('active');
-            currentTab = tab;
-        }
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialisation de l'application
+    initEditor();
+    initComponentDragAndDrop();
+    initPropertyPanel();
+    initAutoSave();
+    setupEventListeners();
+    refreshPreview();
+});
 
-        function setDevice(device) {
-            document.querySelectorAll('.device-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            document.querySelector(`.device-btn[onclick="setDevice('${device}')"]`).classList.add('active');
-            const previewFrame = document.getElementById('preview-frame');
-            previewFrame.className = `preview-frame ${device}`;
-        }
+// Variables globales
+let currentTab = 'html';
+let selectedElement = null;
+let projectHistory = [];
+let historyPosition = -1;
+let lastSavedState = null;
+let autoSaveInterval = null;
+let isModified = false;
+let projectConfig = {
+    name: 'Nouveau projet',
+    lastModified: new Date(),
+    responsive: true,
+    author: 'Utilisateur'
+};
 
-        function refreshPreview() {
-            const htmlContent = document.getElementById('html-code').innerText;
-            const cssContent = document.getElementById('css-code').innerText;
-            const jsContent = document.getElementById('js-code').innerText;
-            const previewFrame = document.getElementById('preview-frame');
-            const previewDocument = previewFrame.contentDocument || previewFrame.contentWindow.document;
-            previewDocument.open();
-            previewDocument.write(`
-                <!DOCTYPE html>
-                <html lang="fr">
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <style>${cssContent}</style>
-                </head>
-                <body>
-                    ${htmlContent}
-                    <script>${jsContent}<\/script>
-                </body>
-                </html>
-            `);
-            previewDocument.close();
-        }
-
-        function saveProject() {
-            alert('Enregistrement du projet (fonctionnalité non implémentée)');
-        }
-
-        function previewProject() {
-            refreshPreview();
-            alert('Aperçu du projet (fonctionnalité non implémentée)');
-        }
-
-        function closePropertiesPanel() {
-            document.querySelector('.properties-panel').style.display = 'none';
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            refreshPreview();
+/**
+ * Initialisation des éditeurs de code avec coloration syntaxique
+ */
+function initEditor() {
+    // Initialisation des éditeurs pour chaque langage
+    const htmlEditor = document.getElementById('html-code');
+    const cssEditor = document.getElementById('css-code');
+    const jsEditor = document.getElementById('js-code');
+    
+    // Ajout des numéros de ligne
+    addLineNumbers(htmlEditor);
+    addLineNumbers(cssEditor);
+    addLineNumbers(jsEditor);
+    
+    // Écoute des modifications dans le code
+    [htmlEditor, cssEditor, jsEditor].forEach(editor => {
+        editor.addEventListener('input', () => {
+            isModified = true;
+            updateStatusBar('Modifié');
+            saveHistoryState();
         });
+        
+        // Indentation automatique
+        editor.addEventListener('keydown', handleEditorKeyDown);
+    });
+    
+    // Initialiser avec du contenu par défaut
+    htmlEditor.textContent = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Mon site</title>
+</head>
+<body>
+    <h1>Bienvenue sur mon site</h1>
+    <p>Ceci est un paragraphe de test.</p>
+</body>
+</html>`;
+
+    cssEditor.textContent = `body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    color: #333;
+}
+
+h1 {
+    color: #2c3e50;
+}`;
+
+    jsEditor.textContent = `// JavaScript ici
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Site chargé !');
+});`;
+
+    // Ajouter à l'historique
+    saveHistoryState();
+}
+
+/**
+ * Ajouter des numéros de ligne à l'éditeur
+ */
+function addLineNumbers(editor) {
+    const linesContainer = document.createElement('div');
+    linesContainer.className = 'line-numbers';
+    
+    editor.parentNode.insertBefore(linesContainer, editor);
+    editor.addEventListener('input', () => updateLineNumbers(editor, linesContainer));
+    editor.addEventListener('scroll', () => {
+        linesContainer.scrollTop = editor.scrollTop;
+    });
+    
+    updateLineNumbers(editor, linesContainer);
+}
+
+/**
+ * Mise à jour des numéros de ligne
+ */
+function updateLineNumbers(editor, linesContainer) {
+    const lines = editor.textContent.split('\n').length;
+    let lineNumbersHTML = '';
+    
+    for (let i = 1; i <= lines; i++) {
+        lineNumbersHTML += `<div>${i}</div>`;
+    }
+    
+    linesContainer.innerHTML = lineNumbersHTML;
+}
+
+/**
+ * Gestion des touches spéciales dans l'éditeur
+ */
+function handleEditorKeyDown(e) {
+    const editor = e.target;
+    
+    // Tabulation
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        document.execCommand('insertText', false, '    ');
+    }
+    
+    // Auto-fermeture des balises
+    if (e.key === '>' && currentTab === 'html') {
+        const selection = window.getSelection();
+        const range = selection.getRangeAt(0);
+        const cursorPosition = range.startOffset;
+        const text = editor.textContent;
+        
+        // Recherche de l'ouverture de balise
+        let openTagStart = text.lastIndexOf('<', cursorPosition - 1);
+        if (openTagStart > -1) {
+            const tagContent = text.substring(openTagStart + 1, cursorPosition);
+            
+            // Ignorer les balises de fermeture ou les balises auto-fermantes
+            if (!tagContent.startsWith('/') && !tagContent.endsWith('/')) {
+                // Extraire le nom de la balise
+                const tagName = tagContent.split(' ')[0];
+                const autoCloseTags = ['br', 'hr', 'img', 'input', 'link', 'meta'];
+                
+                if (!autoCloseTags.includes(tagName)) {
+                    setTimeout(() => {
+                        document.execCommand('insertText', false, `</${tagName}>`);
+                        // Repositionner le curseur
+                        const newRange = document.createRange();
+                        newRange.setStart(editor.firstChild, cursorPosition);
+                        newRange.setEnd(editor.firstChild, cursorPosition);
+                        selection.removeAllRanges();
+                        selection.addRange(newRange);
+                    }, 0);
+                }
+            }
+        }
+    }
+    
+    // Indentation automatique pour les accolades
+    if (e.key === 'Enter') {
+        const selection = window.getSelection();
+        const range = selection.getRangeAt(0);
+        const cursorPosition = range.startOffset;
+        const text = editor.textContent;
+        
+        if (cursorPosition > 0 && text[cursorPosition - 1] === '{') {
+            // Calculer l'indentation actuelle
+            let lineStart = text.lastIndexOf('\n', cursorPosition) + 1;
+            let indentation = '';
+            for (let i = lineStart; i < text.length && /\s/.test(text[i]); i++) {
+                indentation += text[i];
+            }
+            
+            setTimeout(() => {
+                // Ajouter indentation + 4 espaces + nouvelle ligne avec mème indentation
+                document.execCommand('insertText', false, '\n' + indentation + '    \n' + indentation + '}');
+                
+                // Positionner le curseur après l'indentation
+                const newCursorPos = cursorPosition + indentation.length + 5;
+                const newRange = document.createRange();
+                newRange.setStart(editor.firstChild, newCursorPos);
+                newRange.setEnd(editor.firstChild, newCursorPos);
+                selection.removeAllRanges();
+                selection.addRange(newRange);
+            }, 0);
+            
+            e.preventDefault();
+        }
+    }
+    
+    // Raccourcis clavier
+    if (e.ctrlKey || e.metaKey) {
+        switch (e.key) {
+            case 's':
+                e.preventDefault();
+                saveProject();
+                break;
+            case 'z':
+                e.preventDefault();
+                if (!e.shiftKey) undo();
+                else redo();
+                break;
+            case 'y':
+                e.preventDefault();
+                redo();
+                break;
+        }
+    }
+}
+
+/**
+ * Initialisation du drag & drop pour les composants
+ */
+function initComponentDragAndDrop() {
+    const componentItems = document.querySelectorAll('.component-item');
+    const previewFrame = document.getElementById('preview-frame');
+    
+    componentItems.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', item.querySelector('div').textContent);
+        });
+    });
+    
+    // Activer drop zone dans l'éditeur HTML
+    const htmlEditor = document.getElementById('html-code');
+    
+    htmlEditor.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        htmlEditor.classList.add('dragover');
+    });
+    
+    htmlEditor.addEventListener('dragleave', () => {
+        htmlEditor.classList.remove('dragover');
+    });
+    
+    htmlEditor.addEventListener('drop', (e) => {
+        e.preventDefault();
+        htmlEditor.classList.remove('dragover');
+        
+        const componentType = e.dataTransfer.getData('text/plain');
+        insertComponent(componentType, htmlEditor);
+    });
+}
+
+/**
+ * Insérer un composant HTML dans l'éditeur
+ */
+function insertComponent(componentType, editor) {
+    let componentCode = '';
+    
+    switch(componentType) {
+        case 'Section':
+            componentCode = `<section class="section">
+    <div class="container">
+        <h2>Titre de section</h2>
+        <p>Contenu de la section</p>
+    </div>
+</section>`;
+            break;
+        case 'Conteneur':
+            componentCode = `<div class="container">
+    <!-- Contenu du conteneur -->
+</div>`;
+            break;
+        case 'Texte':
+            componentCode = `<p>Votre texte ici</p>`;
+            break;
+        default:
+            componentCode = `<!-- Composant ${componentType} -->`;
+    }
+    
+    // Insérer le code à la position du curseur
+    const selection = window.getSelection();
+    const range = selection.getRangeAt(0);
+    
+    document.execCommand('insertText', false, componentCode);
+    
+    // Mettre à jour l'aperçu
+    refreshPreview();
+    saveHistoryState();
+    isModified = true;
+    updateStatusBar('Modifié');
+}
+
+/**
+ * Changer d'onglet d'éditeur (HTML, CSS, JS)
+ */
+function switchTab(tab) {
+    document.querySelectorAll('.editor-tab').forEach(tabElement => {
+        tabElement.classList.remove('active');
+    });
+    document.querySelectorAll('.code-content').forEach(contentElement => {
+        contentElement.classList.add('hidden');
+    });
+    document.getElementById(`${tab}-code`).classList.remove('hidden');
+    document.querySelector(`.editor-tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+    currentTab = tab;
+}
+
+/**
+ * Changer le mode d'affichage de l'aperçu (bureau, tablette, mobile)
+ */
+function setDevice(device) {
+    document.querySelectorAll('.device-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`.device-btn[onclick="setDevice('${device}')"]`).classList.add('active');
+    const previewFrame = document.getElementById('preview-frame');
+    
+    // Définir les largeurs pour chaque type d'appareil
+    switch(device) {
+        case 'desktop':
+            previewFrame.style.width = '100%';
+            break;
+        case 'tablet':
+            previewFrame.style.width = '768px';
+            break;
+        case 'mobile':
+            previewFrame.style.width = '375px';
+            break;
+    }
+    
+    previewFrame.className = `preview-frame ${device}`;
+}
+
+/**
+ * Rafraîchir l'aperçu avec le code actuel
+ */
+function refreshPreview() {
+    const htmlContent = document.getElementById('html-code').textContent;
+    const cssContent = document.getElementById('css-code').textContent;
+    const jsContent = document.getElementById('js-code').textContent;
+    const previewFrame = document.getElementById('preview-frame');
+    const previewDocument = previewFrame.contentDocument || previewFrame.contentWindow.document;
+    
+    previewDocument.open();
+    previewDocument.write(`
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>${cssContent}</style>
+        </head>
+        <body>
+            ${htmlContent}
+            <script>${jsContent}<\/script>
+        </body>
+        </html>
+    `);
+    previewDocument.close();
+    
+    // Ajouter des écouteurs d'événements pour la sélection des éléments
+    setupPreviewSelectors(previewDocument);
+    
+    updateStatusBar('Aperçu mis à jour');
+}
+
+/**
+ * Configuration des sélecteurs d'éléments dans l'aperçu
+ */
+function setupPreviewSelectors(previewDocument) {
+    const allElements = previewDocument.querySelectorAll('*');
+    
+    allElements.forEach(element => {
+        // Ignorer les éléments de base
+        if (['HTML', 'HEAD', 'BODY', 'SCRIPT', 'STYLE'].includes(element.tagName)) {
+            return;
+        }
+        
+        element.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Supprimer la sélection précédente
+            previewDocument.querySelectorAll('.element-selected').forEach(el => {
+                el.classList.remove('element-selected');
+            });
+            
+            // Ajouter la classe de sélection
+            element.classList.add('element-selected');
+            selectedElement = element;
+            
+            // Afficher les propriétés
+            showProperties(element);
+        });
+        
+        // Surbrillance au survol
+        element.addEventListener('mouseover', () => {
+            element.style.outline = '2px dashed #3498db';
+        });
+        
+        element.addEventListener('mouseout', () => {
+            if (!element.classList.contains('element-selected')) {
+                element.style.outline = '';
+            }
+        });
+    });
+    
+    // Ajouter une feuille de style pour les éléments sélectionnés
+    const styleElement = previewDocument.createElement('style');
+    styleElement.textContent = `
+        .element-selected {
+            outline: 2px solid #e74c3c !important;
+            outline-offset: 2px;
+        }
+    `;
+    previewDocument.head.appendChild(styleElement);
+}
+
+/**
+ * Initialisation du panneau de propriétés
+ */
+function initPropertyPanel() {
+    const propertiesPanel = document.querySelector('.properties-panel');
+    const panelContent = propertiesPanel.querySelector('.panel-content');
+    
+    // Masquer le panneau au début
+    propertiesPanel.style.display = 'none';
+}
+
+/**
+ * Afficher les propriétés d'un élément dans le panneau
+ */
+function showProperties(element) {
+    const propertiesPanel = document.querySelector('.properties-panel');
+    const panelContent = propertiesPanel.querySelector('.panel-content');
+    
+    // Afficher le panneau
+    propertiesPanel.style.display = 'flex';
+    
+    // Nettoyer le contenu précédent
+    panelContent.innerHTML = '';
+    
+    // Ajouter les informations de base
+    const basicInfo = document.createElement('div');
+    basicInfo.className = 'property-group';
+    basicInfo.innerHTML = `
+        <h3>Élément</h3>
+        <div class="property-row">
+            <label>Type</label>
+            <span>${element.tagName.toLowerCase()}</span>
+        </div>
+        ${element.id ? `
+        <div class="property-row">
+            <label>ID</label>
+            <span>${element.id}</span>
+        </div>` : ''}
+        ${element.className ? `
+        <div class="property-row">
+            <label>Classes</label>
+            <span>${element.className}</span>
+        </div>` : ''}
+    `;
+    panelContent.appendChild(basicInfo);
+    
+    // Ajouter les propriétés de style
+    const styleProperties = document.createElement('div');
+    styleProperties.className = 'property-group';
+    styleProperties.innerHTML = '<h3>Style</h3>';
+    
+    // Ajouter les propriétés courantes
+    const commonProperties = [
+        { name: 'width', label: 'Largeur' },
+        { name: 'height', label: 'Hauteur' },
+        { name: 'background-color', label: 'Couleur de fond' },
+        { name: 'color', label: 'Couleur du texte' },
+        { name: 'font-size', label: 'Taille de police' },
+        { name: 'margin', label: 'Marge' },
+        { name: 'padding', label: 'Remplissage' }
+    ];
+    
+    const computedStyle = window.getComputedStyle(element);
+    
+    commonProperties.forEach(prop => {
+        const value = computedStyle[prop.name];
+        
+        const propertyRow = document.createElement('div');
+        propertyRow.className = 'property-row';
+        
+        let inputType = 'text';
+        let inputElement = '';
+        
+        // Déterminer le type d'entrée approprié
+        if (prop.name === 'background-color' || prop.name === 'color') {
+            inputType = 'color';
+            const hexColor = rgbToHex(value);
+            inputElement = `<input type="${inputType}" value="${hexColor}" data-property="${prop.name}">`;
+        } else {
+            inputElement = `<input type="${inputType}" value="${value}" data-property="${prop.name}">`;
+        }
+        
+        propertyRow.innerHTML = `
+            <label>${prop.label}</label>
+            ${inputElement}
+        `;
+        styleProperties.appendChild(propertyRow);
+        
+        // Ajouter un écouteur d'événements pour mettre à jour le style
+        const input = propertyRow.querySelector('input');
+        input.addEventListener('change', (e) => {
+            updateElementStyle(element, prop.name, e.target.value);
+        });
+    });
+    
+    panelContent.appendChild(styleProperties);
+    
+    // Ajouter les actions sur l'élément
+    const actionsGroup = document.createElement('div');
+    actionsGroup.className = 'property-group';
+    actionsGroup.innerHTML = `
+        <h3>Actions</h3>
+        <div class="property-actions">
+            <button class="action-btn" id="duplicate-element">Dupliquer</button>
+            <button class="action-btn" id="delete-element">Supprimer</button>
+        </div>
+    `;
+    panelContent.appendChild(actionsGroup);
+    
+    // Ajouter les écouteurs d'événements pour les actions
+    document.getElementById('duplicate-element').addEventListener('click', () => {
+        duplicateElement(element);
+    });
+    
+    document.getElementById('delete-element').addEventListener('click', () => {
+        deleteElement(element);
+    });
+}
+
+/**
+ * Fermer le panneau de propriétés
+ */
+function closePropertiesPanel() {
+    document.querySelector('.properties-panel').style.display = 'none';
+    
+    // Désélectionner l'élément dans l'aperçu
+    const previewFrame = document.getElementById('preview-frame');
+    const previewDocument = previewFrame.contentDocument || previewFrame.contentWindow.document;
+    
+    previewDocument.querySelectorAll('.element-selected').forEach(el => {
+        el.classList.remove('element-selected');
+        el.style.outline = '';
+    });
+    
+    selectedElement = null;
+}
+
+/**
+ * Mettre à jour le style d'un élément
+ */
+function updateElementStyle(element, property, value) {
+    element.style[property] = value;
+    
+    // Mettre à jour le code HTML
+    updateHtmlCode();
+    isModified = true;
+    updateStatusBar('Modifié');
+}
+
+/**
+ * Dupliquer un élément
+ */
+function duplicateElement(element) {
+    const clone = element.cloneNode(true);
+    element.parentNode.insertBefore(clone, element.nextSibling);
+    
+    // Mettre à jour le code HTML
+    updateHtmlCode();
+    refreshPreview();
+    saveHistoryState();
+    isModified = true;
+    updateStatusBar('Élément dupliqué');
+}
+
+/**
+ * Supprimer un élément
+ */
+function deleteElement(element) {
+    element.parentNode.removeChild(element);
+    
+    // Mettre à jour le code HTML
+    updateHtmlCode();
+    refreshPreview();
+    closePropertiesPanel();
+    saveHistoryState();
+    isModified = true;
+    updateStatusBar('Élément supprimé');
+}
+
+/**
+ * Mettre à jour le code HTML depuis l'aperçu
+ */
+function updateHtmlCode() {
+    const previewFrame = document.getElementById('preview-frame');
+    const previewDocument = previewFrame.contentDocument || previewFrame.contentWindow.document;
+    const htmlEditor = document.getElementById('html-code');
+    
+    // Obtenir le code HTML du body
+    const bodyContent = previewDocument.body.innerHTML;
+    
+    // Mettre à jour l'éditeur HTML
+    htmlEditor.textContent = bodyContent;
+    
+    // Mettre à jour les numéros de ligne
+    const linesContainer = htmlEditor.previousSibling;
+    if (linesContainer && linesContainer.className === 'line-numbers') {
+        updateLineNumbers(htmlEditor, linesContainer);
+    }
+}
+
+/**
+ * Convertir RGB en Hex pour les sélecteurs de couleur
+ */
+function rgbToHex(rgb) {
+    // Gérer 'rgb(r, g, b)' et les formats de couleur nommés
+    if (!rgb.startsWith('rgb')) {
+        return rgb;
+    }
+    
+    const rgbArray = rgb.match(/\d+/g);
+    if (!rgbArray || rgbArray.length < 3) {
+        return '#000000';
+    }
+    
+    return '#' + rgbArray.slice(0, 3).map(x => {
+        const hex = parseInt(x).toString(16);
+        return hex.length === 1 ? '0' + hex : hex;
+    }).join('');
+}
+
+/**
+ * Enregistrer l'état actuel dans l'historique
+ */
+function saveHistoryState() {
+    const htmlCode = document.getElementById('html-code').textContent;
+    const cssCode = document.getElementById('css-code').textContent;
+    const jsCode = document.getElementById('js-code').textContent;
+    
+    // Limiter la taille de l'historique
+    if (historyPosition < projectHistory.length - 1) {
+        projectHistory = projectHistory.slice(0, historyPosition + 1);
+    }
+    
+    // Ajouter à l'historique si différent
+    const currentState = { html: htmlCode, css: cssCode, js: jsCode };
+    
+    if (historyPosition < 0 || 
+        JSON.stringify(currentState) !== JSON.stringify(projectHistory[historyPosition])) {
+        projectHistory.push(currentState);
+        historyPosition = projectHistory.length - 1;
+    }
+    
+    // Activer/désactiver les boutons d'annulation/rétablissement
+    updateUndoRedoButtons();
+}
+
+/**
+ * Mettre à jour les boutons d'annulation/rétablissement
+ */
+function updateUndoRedoButtons() {
+    // Cette fonction peut être étendue pour ajouter des boutons d'annulation/rétablissement
+    // à l'interface utilisateur
+    // console.log(`Undo: ${historyPosition > 0}, Redo: ${historyPosition < projectHistory.length - 1}`);
+}
+
+/**
+ * Annuler la dernière modification
+ */
+function undo() {
+    if (historyPosition > 0) {
+        historyPosition--;
+        restoreHistoryState();
+    } else {
+        updateStatusBar('Impossible d\'annuler davantage');
+    }
+}
+
+/**
+ * Rétablir la dernière modification annulée
+ */
+function redo() {
+    if (historyPosition < projectHistory.length - 1) {
+        historyPosition++;
+        restoreHistoryState();
+    } else {
+        updateStatusBar('Impossible de rétablir davantage');
+    }
+}
+
+/**
+ * Restaurer un état de l'historique
+ */
+function restoreHistoryState() {
+    const state = projectHistory[historyPosition];
+    
+    document.getElementById('html-code').textContent = state.html;
+    document.getElementById('css-code').textContent = state.css;
+    document.getElementById('js-code').textContent = state.js;
+    
+    // Mettre à jour les numéros de ligne
+    updateAllLineNumbers();
+    
+    // Rafraîchir l'aperçu
+    refreshPreview();
+    
+    // Mettre à jour les boutons d'annulation/rétablissement
+    updateUndoRedoButtons();
+    
+    updateStatusBar('État restauré');
+}
+
+/**
+ * Mettre à jour tous les numéros de ligne
+ */
+function updateAllLineNumbers() {
+    const editors = ['html-code', 'css-code', 'js-code'];
+    
+    editors.forEach(editorId => {
+        const editor = document.getElementById(editorId);
+        const linesContainer = editor.previousSibling;
+        if (linesContainer && linesContainer.className === 'line-numbers') {
+            updateLineNumbers(editor, linesContainer);
+        }
+    });
+}
+
+/**
+ * Enregistrer le projet
+ */
+function saveProject() {
+    const htmlCode = document.getElementById('html-code').textContent;
+    const cssCode = document.getElementById('css-code').textContent;
+    const jsCode = document.getElementById('js-code').textContent;
+    
+    const projectData = {
+        html: htmlCode,
+        css: cssCode,
+        js: jsCode,
+        config: projectConfig
+    };
+    
+    // Simuler la sauvegarde (dans une application réelle, cela enverrait au serveur)
+    localStorage.setItem('webstudio_project', JSON.stringify(projectData));
+    
+    lastSavedState = JSON.stringify(projectData);
+    isModified = false;
+    projectConfig.lastModified = new Date();
+    
+    updateStatusBar('Projet enregistré');
+}
+
+/**
+ * Charger un projet sauvegardé
+ */
+function loadProject() {
+    const savedProject = localStorage.getItem('webstudio_project');
+    if (savedProject) {
+        try {
+            const projectData = JSON.parse(savedProject);
+            
+            document.getElementById('html-code').textContent = projectData.html || '';
+            document.getElementById('css-code').textContent = projectData.css || '';
+            document.getElementById('js-code').textContent = projectData.js || '';
+            
+            if (projectData.config) {
+                projectConfig = projectData.config;
+            }
+            
+            // Mettre à jour les numéros de ligne
+            updateAllLineNumbers();
+            
+            // Rafraîchir l'aperçu
+            refreshPreview();
+            
+            // Réinitialiser l'historique
+            projectHistory = [{ html: projectData.html, css: projectData.css, js: projectData.js }];
+            historyPosition = 0;
+            
+            lastSavedState = savedProject;
+            isModified = false;
+            
+            updateStatusBar('Projet chargé');
+        } catch (error) {
+            console.error('Erreur lors du chargement du projet:', error);
+            updateStatusBar('Erreur lors du chargement');
+        }
+    } else {
+        updateStatusBar('Aucun projet sauvegardé');
+    }
+}
+
+/**
+ * Initialiser l'auto-sauvegarde
+ */
+function initAutoSave() {
+    autoSaveInterval = setInterval(() => {
+        if (isModified) {
+            const htmlCode = document.getElementById('html-code').textContent;
+            const cssCode = document.getElementById('css-code').textContent;
+            const jsCode = document.getElementById('js-code').textContent;
+            
+            const projectData = {
+                html: htmlCode,
+                css: cssCode,
+                js: jsCode,
+                config: projectConfig
+            };
+            
+            localStorage.setItem('webstudio_autosave', JSON.stringify(projectData));
+            updateStatusBar('Auto-sauvegarde effectuée', 1500);
+        }
+    }, 60000); // Auto-sauvegarde toutes les minutes
+}
+
+/**
+ * Récupérer une auto-sauvegarde
+ */
+function recoverAutoSave() {
+    const autoSave = localStorage.getItem('webstudio_autosave');
+    if (autoSave) {
+        if (confirm('Une sauvegarde automatique a été trouvée. Voulez-vous la récupérer ?')) {
+            try {
+                const projectData = JSON.parse(autoSave);
+                
+                document.getElementById('html-code').textContent = projectData.html || '';
+                document.getElementById('css-code').textContent = projectData.css || '';
+                document.getElementById('js-code').textContent = projectData.js || '';
+                
+                if (projectData.config) {
+                    projectConfig = projectData.config;
+                }
+                
+                // Mettre à jour les numéros de ligne
+                updateAllLineNumbers();
+                
+                // Rafraîchir l'aperçu
+                refreshPreview();
+                
+                updateStatusBar('Auto-sauvegarde récupérée');
+            } catch (error) {
+                console.error('Erreur lors de la récupération:', error);
+                updateStatusBar('Erreur de récupération');
+            }
+        }
+    }
+}
+
+/**
+ * Exporter le projet
+ */
+function exportProject() {
+    const htmlCode = document.getElementById('html-code').textContent;
+    const cssCode = document.getElementById('css-code').textContent;
+    const jsCode = document.getElementById('js-code').textContent;
+    
+    // Créer le contenu HTML final
+    const finalHtml = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${projectConfig.name}</title>
+    <style>
+${cssCode}
+    </style>
+</head>
+<body>
+${htmlCode}
+    <script>
+${jsCode}
+    </script>
+</body>
+</html>`;
+    
+    // Créer un objet Blob
+    const blob = new Blob([finalHtml], { type: 'text/html' });
+    
+    // Créer un lien de téléchargement
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${projectConfig.name.replace(/\s+/g, '-').toLowerCase()}.html`;
+    
+    // Simuler un clic sur le lien
+    
     </script>
 </body>
 </html>
