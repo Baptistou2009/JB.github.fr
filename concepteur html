@@ -692,3 +692,187 @@
                     <div class="component-item" draggable="true">
                         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path fill="currentColor" d="M8.5,13.5L11,16.5L14.5,12L19,18H5M21,19V5C21,3.89 20.1,3 19,3H5A2,2 0 0,0 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0
+                </div>
+            </div>
+        </div>
+
+        <!-- Workspace -->
+        <div class="workspace">
+            <div class="toolbar">
+                <button class="toolbar-btn" onclick="saveProject()">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path fill="currentColor" d="M5 4v16h14V4H5zm2 2h10v12H7V6zm5 1.5c-.83 0-1.5.67-1.5 1.5S11.17 10.5 12 10.5s1.5-.67 1.5-1.5S12.83 7.5 12 7.5zm0 4c-1.1 0-2 .9-2 2v1h4v-1c0-1.1-.9-2-2-2z"/>
+                    </svg>
+                    Enregistrer
+                </button>
+                <button class="toolbar-btn" onclick="previewProject()">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path fill="currentColor" d="M12 4.5C7.05 4.5 2.73 7.61 1 12c1.73 4.39 6.05 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6.05-7.5-11-7.5zm0 13c-3.87 0-7.19-2.69-8.48-6 1.29-3.31 4.61-6 8.48-6s7.19 2.69 8.48 6c-1.29 3.31-4.61 6-8.48 6zm0-10c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm0 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
+                    </svg>
+                    Aperçu
+                </button>
+            </div>
+            <div class="editor-area">
+                <div class="code-editor">
+                    <div class="code-editor-tabs">
+                        <div class="editor-tab active" onclick="switchTab('html')">
+                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path fill="currentColor" d="M12 2L1.5 21h21L12 2zm0 3.84L18.93 19H5.07L12 5.84zM11 10h2v6h-2v-6zm0 8h2v2h-2v-2z"/>
+                            </svg>
+                            HTML
+                        </div>
+                        <div class="editor-tab" onclick="switchTab('css')">
+                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path fill="currentColor" d="M12 2L1.5 21h21L12 2zm0 3.84L18.93 19H5.07L12 5.84zM11 10h2v6h-2v-6zm0 8h2v2h-2v-2z"/>
+                            </svg>
+                            CSS
+                        </div>
+                        <div class="editor-tab" onclick="switchTab('js')">
+                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path fill="currentColor" d="M12 2L1.5 21h21L12 2zm0 3.84L18.93 19H5.07L12 5.84zM11 10h2v6h-2v-6zm0 8h2v2h-2v-2z"/>
+                            </svg>
+                            JS
+                        </div>
+                    </div>
+                    <div class="code-panel">
+                        <pre class="code-content" id="html-code" contenteditable="true">
+&lt;!-- HTML content here --&gt;
+                        </pre>
+                        <pre class="code-content hidden" id="css-code" contenteditable="true">
+/* CSS content here */
+                        </pre>
+                        <pre class="code-content hidden" id="js-code" contenteditable="true">
+/* JS content here */
+                        </pre>
+                    </div>
+                </div>
+                <div class="preview-area">
+                    <div class="preview-header">
+                        <div class="device-selector">
+                            <button class="device-btn active" onclick="setDevice('desktop')">
+                                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path fill="currentColor" d="M21 4H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H3V6h18v12zM9 18h6v2H9v-2z"/>
+                                </svg>
+                            </button>
+                            <button class="device-btn" onclick="setDevice('tablet')">
+                                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path fill="currentColor" d="M17 1H7C5.9 1 5 1.9 5 3v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 18H7V3h10v16z"/>
+                                </svg>
+                            </button>
+                            <button class="device-btn" onclick="setDevice('mobile')">
+                                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path fill="currentColor" d="M17 1H7C5.9 1 5 1.9 5 3v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-2-2-2zm0 18H7V3h10v16z"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="preview-actions">
+                            <button class="toolbar-btn" onclick="refreshPreview()">
+                                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path fill="currentColor" d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.66-.67 3.16-1.76 4.24l1.42 1.42C19.07 15.9 20 14.05 20 12c0-4.42-3.58-8-8-8zm-6 6c0-1.66.67-3.16 1.76-4.24L6.34 4.34C4.93 5.9 4 7.75 4 10c0 4.42 3.58 8 8 8v3l4-4-4-4v3c-3.31 0-6-2.69-6-6z"/>
+                                </svg>
+                                Actualiser
+                            </button>
+                        </div>
+                    </div>
+                    <div class="preview-frame-container">
+                        <iframe id="preview-frame" class="preview-frame"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Properties Panel -->
+        <div class="properties-panel">
+            <div class="panel-header">
+                <span>Propriétés</span>
+                <button class="panel-close" onclick="closePropertiesPanel()">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path fill="currentColor" d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="panel-content">
+                <!-- Property groups and inputs will be dynamically added here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="status-info">
+            <div class="status-item">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                </svg>
+                <span>Prêt</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'html';
+
+        function switchTab(tab) {
+            document.querySelectorAll('.editor-tab').forEach(tabElement => {
+                tabElement.classList.remove('active');
+            });
+            document.querySelectorAll('.code-content').forEach(contentElement => {
+                contentElement.classList.add('hidden');
+            });
+            document.getElementById(`${tab}-code`).classList.remove('hidden');
+            document.querySelector(`.editor-tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+            currentTab = tab;
+        }
+
+        function setDevice(device) {
+            document.querySelectorAll('.device-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelector(`.device-btn[onclick="setDevice('${device}')"]`).classList.add('active');
+            const previewFrame = document.getElementById('preview-frame');
+            previewFrame.className = `preview-frame ${device}`;
+        }
+
+        function refreshPreview() {
+            const htmlContent = document.getElementById('html-code').innerText;
+            const cssContent = document.getElementById('css-code').innerText;
+            const jsContent = document.getElementById('js-code').innerText;
+            const previewFrame = document.getElementById('preview-frame');
+            const previewDocument = previewFrame.contentDocument || previewFrame.contentWindow.document;
+            previewDocument.open();
+            previewDocument.write(`
+                <!DOCTYPE html>
+                <html lang="fr">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <style>${cssContent}</style>
+                </head>
+                <body>
+                    ${htmlContent}
+                    <script>${jsContent}<\/script>
+                </body>
+                </html>
+            `);
+            previewDocument.close();
+        }
+
+        function saveProject() {
+            alert('Enregistrement du projet (fonctionnalité non implémentée)');
+        }
+
+        function previewProject() {
+            refreshPreview();
+            alert('Aperçu du projet (fonctionnalité non implémentée)');
+        }
+
+        function closePropertiesPanel() {
+            document.querySelector('.properties-panel').style.display = 'none';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshPreview();
+        });
+    </script>
+</body>
+</html>
