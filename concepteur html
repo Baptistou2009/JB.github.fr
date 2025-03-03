@@ -840,6 +840,22 @@ let projectConfig = {
     author: 'Utilisateur'
 };
 
+finalHtml = ('<div class="Mcontainer">' +
+    '<!DOCTYPE html>\n' +
+    '<html lang="fr">\n' +
+    '<head>\n' +
+    '    <meta charset="UTF-8">\n' +
+    '    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+    '    <title>' + projectConfig.name + '</title>\n' +
+    '    <style>\n' + cssCode + '\n' +
+    '    </style>\n' +
+    '</head>\n' +
+    '<body>\n' +
+    htmlCode + '\n' +
+    '    <script>\n' + jsCode + '\n<\/script>\n' +
+    '</body>\n' +
+    '</html>');
+
 /**
  * Initialisation des éditeurs de code avec coloration syntaxique
  */
@@ -1124,7 +1140,7 @@ function setDevice(device) {
     });
     document.querySelector(`.device-btn[onclick="setDevice('${device}')"]`).classList.add('active');
     const previewFrame = document.getElementById('preview-frame');
-    
+
     // Définir les largeurs pour chaque type d'appareil
     switch(device) {
         case 'desktop':
@@ -1167,10 +1183,10 @@ function refreshPreview() {
         </html>
     `);
     previewDocument.close();
-    
+
     // Ajouter des écouteurs d'événements pour la sélection des éléments
     setupPreviewSelectors(previewDocument);
-    
+
     updateStatusBar('Aperçu mis à jour');
 }
 
@@ -1563,7 +1579,7 @@ function saveProject() {
     lastSavedState = JSON.stringify(projectData);
     isModified = false;
     projectConfig.lastModified = new Date();
-    
+
     updateStatusBar('Projet enregistré');
 }
 
@@ -1616,14 +1632,14 @@ function initAutoSave() {
             const htmlCode = document.getElementById('html-code').textContent;
             const cssCode = document.getElementById('css-code').textContent;
             const jsCode = document.getElementById('js-code').textContent;
-            
+
             const projectData = {
                 html: htmlCode,
                 css: cssCode,
                 js: jsCode,
                 config: projectConfig
             };
-            
+
             localStorage.setItem('webstudio_autosave', JSON.stringify(projectData));
             updateStatusBar('Auto-sauvegarde effectuée', 1500);
         }
@@ -1639,21 +1655,21 @@ function recoverAutoSave() {
         if (confirm('Une sauvegarde automatique a été trouvée. Voulez-vous la récupérer ?')) {
             try {
                 const projectData = JSON.parse(autoSave);
-                
+
                 document.getElementById('html-code').textContent = projectData.html || '';
                 document.getElementById('css-code').textContent = projectData.css || '';
                 document.getElementById('js-code').textContent = projectData.js || '';
-                
+
                 if (projectData.config) {
                     projectConfig = projectData.config;
                 }
-                
+
                 // Mettre à jour les numéros de ligne
                 updateAllLineNumbers();
-                
+
                 // Rafraîchir l'aperçu
                 refreshPreview();
-                
+
                 updateStatusBar('Auto-sauvegarde récupérée');
             } catch (error) {
                 console.error('Erreur lors de la récupération:', error);
@@ -1663,14 +1679,18 @@ function recoverAutoSave() {
     }
 }
 
-/**
- * Exporter le projet
- */
 function exportProject() {
+    // Récupérer le code HTML, CSS et JS
     const htmlCode = document.getElementById('html-code').textContent;
     const cssCode = document.getElementById('css-code').textContent;
     const jsCode = document.getElementById('js-code').textContent;
-    
+
+    // Vérifier si projectConfig est défini
+    if (typeof projectConfig === 'undefined' || !projectConfig.name) {
+        console.error('projectConfig n\'est pas défini ou n\'a pas de nom.');
+        return;
+    }
+
     // Créer le contenu HTML final
     const finalHtml = `<!DOCTYPE html>
 <html lang="fr">
@@ -1689,17 +1709,23 @@ ${jsCode}
     </script>
 </body>
 </html>`;
-    
+
     // Créer un objet Blob
     const blob = new Blob([finalHtml], { type: 'text/html' });
-    
+
     // Créer un lien de téléchargement
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `${projectConfig.name.replace(/\s+/g, '-').toLowerCase()}.html`;
-    
+    link.download = projectConfig.name.replace(/\s+/g, '-').toLowerCase() + '.html';
+
     // Simuler un clic sur le lien
-    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+
+
     </script>
 </body>
 </html>
